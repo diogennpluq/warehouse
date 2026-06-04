@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: techcontrol_db
+    environment:
+      POSTGRES_USER: techcontrol
+      POSTGRES_PASSWORD: techcontrol_pass
+      POSTGRES_DB: techcontrol_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techcontrol -d techcontrol_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: techcontrol_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://techcontrol:techcontrol_pass@db:5432/techcontrol_db?sslmode=disable
+      - JWT_SECRET=your-secret-key-change-in-production
+      - PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - go_mod_cache:/go/pkg/mod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: techcontrol_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  go_mod_cache:

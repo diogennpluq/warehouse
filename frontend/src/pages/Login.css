@@ -1,0 +1,30 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 64px);
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+}
+
+.login-card h2 {
+  margin-bottom: 24px;
+  text-align: center;
+  color: #262626;
+}
+
+.login-card .error-message {
+  margin-bottom: 20px;
+}
+
+.login-card button[type="submit"] {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+}
+

@@ -1,0 +1,53 @@
+/* Дополнительные стили для компонентов */
+
+.equipment-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.detail-item {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+.detail-item strong {
+  color: #595959;
+  margin-right: 8px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.dashboard-grid .card {
+  min-height: 300px;
+}
+
+/* Стили для Login.tsx */
+.toggle-link {
+  text-align: center;
+  margin-top: 20px;
+  color: #8c8c8c;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-link button {
+  background: none;
+  border: none;
+  color: #1890ff;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
+
+.toggle-link button:hover {
+  text-decoration: underline;
+}
