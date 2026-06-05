@@ -5,6 +5,7 @@ import EquipmentList from './pages/EquipmentList';
 import EquipmentDetail from './pages/EquipmentDetail';
 import RepairsList from './pages/RepairsList';
 import PurchaseTasks from './pages/PurchaseTasks';
+import Procurements from './pages/Procurements';
 import Dashboard from './pages/Dashboard';
 import { User } from './api/api';
 import './App.css';
@@ -57,6 +58,9 @@ function App() {
                 <Link to="/equipment">Техника</Link>
                 <Link to="/repairs">Ремонты</Link>
                 <Link to="/purchase">Закупки</Link>
+                <Link to="/procurements" style={{ color: '#f59e0b', fontWeight: '600' }}>
+                  44-ФЗ
+                </Link>
                 <span className="user-info">
                   {user.username} ({user.role})
                 </span>
@@ -92,6 +96,10 @@ function App() {
             <Route
               path="/purchase"
               element={user ? <PurchaseTasks /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/procurements"
+              element={user ? <Procurements /> : <Navigate to="/login" />}
             />
             <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
           </Routes>

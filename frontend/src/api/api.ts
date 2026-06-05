@@ -145,4 +145,11 @@ export const purchaseAPI = {
   getStats: () => api.get<{ pending_count: number; estimated_cost: number }>('/purchase/stats'),
 };
 
+// Procurement API (44-ФЗ)
+export const procurementAPI = {
+  calculateNMCC: (data: any) => api.post('/procurement/calculate-nmcc', data),
+  generateNMCC: (data: any) => api.post('/procurement/generate-nmcc', data, { responseType: 'blob' }),
+  generateFullPackage: (data: any) => api.post('/procurement/generate-full-package', data, { responseType: 'blob' }),
+};
+
 export default api;
