@@ -1,0 +1,9 @@
+# Папка для шаблонов документов
+
+Поместите сюда файлы шаблонов:
+- nmcc_template.xlsx - шаблон "Обоснование НМЦК"
+- procurement_request.docx - шаблон "Заявка"
+- procurement_order.docx - шаблон "Распоряжение"
+- tech_spec.docx - шаблон "Описание объекта закупки"
+- announcement_info.docx - шаблон "Информация к извещению"
+- contract_project.docx - шаблон "Проект контракта"

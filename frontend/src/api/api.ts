@@ -79,7 +79,7 @@ export interface PurchaseTask {
   quantity: number;
   priority: string;
   status: string;
-  estimated_cost: number;
+  estimated_cost?: number | null;
   due_date?: string;
   created_at: string;
   updated_at: string;

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/techcontrol/backend/service"
 )
@@ -64,12 +65,12 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 	claims, _ := token.Claims.(jwt.MapClaims)
 	userID := int64(claims["user_id"].(float64))
 
-	user, err := h.service.userRepo.GetByID(c.Request().Context(), userID)
+	user, err := h.service.GetUserByID(c.Request().Context(), userID)
 	if err != nil || user == nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "user not found"})
 	}
 
-	newToken, expiresAt, err := h.service.generateToken(user)
+	newToken, expiresAt, err := h.service.GenerateToken(user)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to generate token"})
 	}

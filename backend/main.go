@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echoMiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/techcontrol/backend/config"
 	"github.com/techcontrol/backend/handler"
 	"github.com/techcontrol/backend/middleware"
@@ -21,9 +21,9 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(echoMiddleware.Logger())
+	e.Use(echoMiddleware.Recover())
+	e.Use(echoMiddleware.CORS())
 
 	// Инициализация БД
 	db, err := repository.InitDB(cfg.Database.URL)
@@ -33,16 +33,18 @@ func main() {
 	defer db.Close()
 
 	// Сервисы
-	userService := service.NewUserService(db, cfg.JWT)
+	userService := service.NewUserService(db, cfg.JWT.Secret)
 	equipmentService := service.NewEquipmentService(db)
 	repairService := service.NewRepairService(db)
 	purchaseService := service.NewPurchaseService(db)
+	procurementService := service.NewProcurementService()
 
 	// Рутеры
 	authHandler := handler.NewAuthHandler(userService)
 	equipmentHandler := handler.NewEquipmentHandler(equipmentService)
 	repairHandler := handler.NewRepairHandler(repairService)
 	purchaseHandler := handler.NewPurchaseHandler(purchaseService)
+	procurementHandler := handler.NewProcurementHandler(procurementService)
 
 	// Публичные роуты
 	auth := e.Group("/api/auth")
@@ -70,6 +72,12 @@ func main() {
 	api.GET("/purchase/tasks", purchaseHandler.GetTasks)
 	api.POST("/purchase/tasks", purchaseHandler.CreateTask)
 	api.PUT("/purchase/tasks/:id", purchaseHandler.UpdateTask)
+	api.POST("/purchase/tasks/generate", purchaseHandler.GenerateAutoTasks)
+	api.GET("/purchase/stats", purchaseHandler.GetStats)
+
+	// Закупки по 44-ФЗ
+	api.POST("/procurement/calculate-nmcc", procurementHandler.CalculateNMCC)
+	api.POST("/procurement/generate-nmcc", procurementHandler.DownloadNMCC)
 
 	// Health check
 	e.GET("/health", func(c echo.Context) error {

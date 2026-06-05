@@ -57,7 +57,7 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthRespon
 		return nil, ErrInvalidCredentials
 	}
 
-	token, expiresAt, err := s.generateToken(user)
+	token, expiresAt, err := s.GenerateToken(user)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 		return nil, err
 	}
 
-	token, expiresAt, err := s.generateToken(user)
+	token, expiresAt, err := s.GenerateToken(user)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 	}, nil
 }
 
-func (s *AuthService) generateToken(user *repository.User) (string, int64, error) {
+func (s *AuthService) GenerateToken(user *repository.User) (string, int64, error) {
 	expiresAt := time.Now().Add(24 * time.Hour)
 
 	claims := jwt.MapClaims{
@@ -134,4 +134,8 @@ func (s *AuthService) ValidateToken(tokenString string) (*jwt.Token, error) {
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(s.jwtSecret), nil
 	})
+}
+
+func (s *AuthService) GetUserByID(ctx context.Context, userID int64) (*repository.User, error) {
+	return s.userRepo.GetByID(ctx, userID)
 }

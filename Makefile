@@ -5,6 +5,7 @@
 # Переменные
 COMPOSE_FILE=docker-compose.yml
 PROJECT_NAME=techcontrol
+COMPOSE_CMD=docker compose -p $(PROJECT_NAME) -f $(COMPOSE_FILE)
 
 help: ## Показать эту справку
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -63,22 +64,22 @@ clean: ## Очистить артефакты сборки
 ## ====================
 
 docker-up: ## Запустить Docker Compose
-	docker compose -f $(COMPOSE_FILE) up -d
+	$(COMPOSE_CMD) up -d
 
 docker-down: ## Остановить Docker Compose
-	docker compose -f $(COMPOSE_FILE) down
+	$(COMPOSE_CMD) down
 
 docker-logs: ## Показать логи Docker
-	docker compose -f $(COMPOSE_FILE) logs -f
+	$(COMPOSE_CMD) logs -f
 
 docker-build: ## Собрать Docker образы
-	docker compose -f $(COMPOSE_FILE) build --no-cache
+	$(COMPOSE_CMD) build --no-cache
 
 docker-restart: ## Перезапустить Docker Compose
-	docker compose -f $(COMPOSE_FILE) restart
+	$(COMPOSE_CMD) restart
 
 docker-clean: ## Очистить Docker ресурсы
-	docker compose -f $(COMPOSE_FILE) down -v
+	$(COMPOSE_CMD) down -v
 	docker system prune -f
 
 ## ====================
@@ -86,14 +87,30 @@ docker-clean: ## Очистить Docker ресурсы
 ## ====================
 
 db-migrate: ## Запустить миграции БД
-	docker compose -f $(COMPOSE_FILE) exec db psql -U techcontrol -d techcontrol_db -f /docker-entrypoint-initdb.d/01_init_db.sql
+	$(COMPOSE_CMD) exec db psql -U techcontrol -d techcontrol_db -f /docker-entrypoint-initdb.d/01_init_db.sql
+
+db-migrate-procurements: ## Запустить миграции для закупок
+	$(COMPOSE_CMD) exec db psql -U techcontrol -d techcontrol_db -f /docker-entrypoint-initdb.d/02_procurements.sql
 
 db-backup: ## Создать бэкап БД
-	docker compose -f $(COMPOSE_FILE) exec db pg_dump -U techcontrol techcontrol_db > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	$(COMPOSE_CMD) exec db pg_dump -U techcontrol techcontrol_db > backup_$(shell date +%Y%m%d_%H%M%S).sql
 
 db-restore: ## Восстановить БД из бэкапа
 	@echo "Укажите имя файла бэкапа: make db-restore FILE=backup.sql"
-	docker compose -f $(COMPOSE_FILE) exec -T db psql -U techcontrol techcontrol_db < $(FILE)
+	$(COMPOSE_CMD) exec -T db psql -U techcontrol techcontrol_db < $(FILE)
+
+## ====================
+## Templates
+## ====================
+
+generate-nmcc-template-py: ## Сгенерировать шаблон НМЦК (Python)
+	cd backend/templates && python3 generate_nmcc_template.py
+
+generate-nmcc-template-go: ## Сгенерировать шаблон НМЦК (Go)
+	cd backend/templates && go run generate_template.go
+
+templates: ## Сгенерировать все шаблоны
+	make generate-nmcc-template-py
 
 ## ====================
 ## CI/CD

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcontrol/backend/repository"
 )
 
@@ -10,9 +11,9 @@ type PurchaseService struct {
 	repo *repository.PurchaseRepository
 }
 
-func NewPurchaseService(db interface{}) *PurchaseService {
+func NewPurchaseService(db *pgxpool.Pool) *PurchaseService {
 	return &PurchaseService{
-		repo: repository.NewPurchaseRepository(),
+		repo: repository.NewPurchaseRepository(db),
 	}
 }
 

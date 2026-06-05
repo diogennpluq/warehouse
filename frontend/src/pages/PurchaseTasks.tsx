@@ -4,9 +4,11 @@ import { purchaseAPI, PurchaseTask } from '../api/api';
 const PurchaseTasks: React.FC = () => {
   const [tasks, setTasks] = useState<PurchaseTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [stats, setStats] = useState({ pending_count: 0, estimated_cost: 0 });
   const [showModal, setShowModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [formData, setFormData] = useState<Partial<PurchaseTask>>({
     title: '',
     description: '',
@@ -18,15 +20,20 @@ const PurchaseTasks: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log('Component mounted, loading data...');
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
     try {
+      console.log('Loading purchase tasks data...');
       const [tasksResponse, statsResponse] = await Promise.all([
         purchaseAPI.getTasks(),
         purchaseAPI.getStats(),
       ]);
+      console.log('Tasks response:', tasksResponse.data);
+      console.log('Stats response:', statsResponse.data);
       setTasks(tasksResponse.data || []);
       setStats(statsResponse.data || { pending_count: 0, estimated_cost: 0 });
     } catch (error) {
@@ -39,11 +46,22 @@ const PurchaseTasks: React.FC = () => {
   };
 
   const handleGenerateAutoTasks = async () => {
+    setGenerating(true);
+    setMessage(null);
     try {
       await purchaseAPI.generateAutoTasks();
-      loadData();
-    } catch (error) {
+      setMessage({ type: 'success', text: 'Задачи успешно сгенерированы!' });
+      await loadData();
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.error || 'Ошибка при генерации задач' 
+      });
       console.error('Error generating auto tasks:', error);
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -95,6 +113,19 @@ const PurchaseTasks: React.FC = () => {
     <div className="container">
       <h1 className="page-title">Задачи на закупку</h1>
 
+      {message && (
+        <div className={`alert alert-${message.type}`} style={{
+          padding: '12px 20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
+          color: message.type === 'success' ? '#155724' : '#721c24',
+          border: `1px solid ${message.type === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+        }}>
+          {message.text}
+        </div>
+      )}
+
       <div className="stats-grid" style={{ marginBottom: '20px' }}>
         <div className="stat-card warning">
           <h3>Ожидают выполнения</h3>
@@ -122,8 +153,13 @@ const PurchaseTasks: React.FC = () => {
             </select>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-success" onClick={handleGenerateAutoTasks}>
-              Сгенерировать автоматически
+            <button 
+              className="btn btn-success" 
+              onClick={handleGenerateAutoTasks}
+              disabled={generating}
+              style={{ opacity: generating ? 0.6 : 1, cursor: generating ? 'not-allowed' : 'pointer' }}
+            >
+              {generating ? 'Генерация...' : 'Сгенерировать автоматически'}
             </button>
             <button className="btn btn-primary" onClick={handleOpenModal}>
               Добавить задачу
@@ -160,7 +196,7 @@ const PurchaseTasks: React.FC = () => {
                     {task.status}
                   </span>
                 </td>
-                <td>{task.estimated_cost.toLocaleString()} ₽</td>
+                <td>{task.estimated_cost ? `${task.estimated_cost.toLocaleString()} ₽` : '0 ₽'}</td>
                 <td>{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
                 <td>
                   <div className="action-buttons">
