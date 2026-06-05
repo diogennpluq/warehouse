@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcontrol/backend/repository"
 )
 
@@ -11,9 +10,9 @@ type PurchaseService struct {
 	repo *repository.PurchaseRepository
 }
 
-func NewPurchaseService(db *pgxpool.Pool) *PurchaseService {
+func NewPurchaseService() *PurchaseService {
 	return &PurchaseService{
-		repo: repository.NewPurchaseRepository(db),
+		repo: repository.NewPurchaseRepository(),
 	}
 }
 
@@ -56,8 +55,8 @@ func (s *PurchaseService) CalculateTotalEstimatedCost(ctx context.Context) (floa
 
 	var total float64
 	for _, t := range tasks {
-		if t.Status == "pending" {
-			total += t.EstimatedCost
+		if t.Status == "pending" && t.EstimatedCost != nil {
+			total += *t.EstimatedCost
 		}
 	}
 	return total, nil

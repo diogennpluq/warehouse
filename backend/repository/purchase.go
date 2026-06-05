@@ -3,8 +3,6 @@ package repository
 import (
 	"context"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PurchaseTask struct {
@@ -22,12 +20,10 @@ type PurchaseTask struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
-type PurchaseRepository struct {
-	db *pgxpool.Pool
-}
+type PurchaseRepository struct{}
 
-func NewPurchaseRepository(db *pgxpool.Pool) *PurchaseRepository {
-	return &PurchaseRepository{db: db}
+func NewPurchaseRepository() *PurchaseRepository {
+	return &PurchaseRepository{}
 }
 
 func (r *PurchaseRepository) GetTasks(ctx context.Context) ([]PurchaseTask, error) {
@@ -35,7 +31,7 @@ func (r *PurchaseRepository) GetTasks(ctx context.Context) ([]PurchaseTask, erro
 		priority, status, estimated_cost, due_date, created_at, updated_at 
 		FROM purchase_tasks ORDER BY created_at DESC`
 	
-	rows, err := r.db.Query(ctx, query)
+	rows, err := DB.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +58,7 @@ func (r *PurchaseRepository) CreateTask(ctx context.Context, task *PurchaseTask)
 		quantity, priority, status, estimated_cost, due_date) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, created_at, updated_at`
 	
-	return r.db.QueryRow(ctx, query,
+	return DB.QueryRow(ctx, query,
 		task.Title, task.Description, task.PartID, task.EquipmentID,
 		task.Quantity, task.Priority, task.Status, task.EstimatedCost, task.DueDate,
 	).Scan(&task.ID, &task.CreatedAt, &task.UpdatedAt)
@@ -73,7 +69,7 @@ func (r *PurchaseRepository) UpdateTask(ctx context.Context, task *PurchaseTask)
 		equipment_id=$5, quantity=$6, priority=$7, status=$8, estimated_cost=$9, 
 		due_date=$10, updated_at=$11 WHERE id=$1`
 	
-	_, err := r.db.Exec(ctx, query,
+	_, err := DB.Exec(ctx, query,
 		task.ID, task.Title, task.Description, task.PartID, task.EquipmentID,
 		task.Quantity, task.Priority, task.Status, task.EstimatedCost, task.DueDate, time.Now(),
 	)
@@ -98,6 +94,6 @@ func (r *PurchaseRepository) GenerateAutoTasks(ctx context.Context) error {
 			WHERE pt.equipment_id = e.id AND pt.status = 'pending'
 		)
 	`
-	_, err := r.db.Exec(ctx, query)
+	_, err := DB.Exec(ctx, query)
 	return err
 }

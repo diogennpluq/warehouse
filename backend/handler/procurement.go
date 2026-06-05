@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"archive/zip"
+	"bytes"
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -65,8 +68,94 @@ func (h *ProcurementHandler) CalculateNMCC(c echo.Context) error {
 	isValid, message := service.ValidateNMCC(req.Prices)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"result":  result,
+		"result":   result,
 		"is_valid": isValid,
-		"message": message,
+		"message":  message,
 	})
+}
+
+// GenerateFullPackage - генерация полного пакета документов (ZIP-архив)
+func (h *ProcurementHandler) GenerateFullPackage(c echo.Context) error {
+	var req service.GenerateFullPackageRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid JSON format",
+		})
+	}
+
+	// Генерация ZIP-архива со всеми документами
+	buffer, err := h.generateDocumentsZip(&req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to generate documents: " + err.Error(),
+		})
+	}
+
+	// Заголовки для скачивания файла
+	filename := fmt.Sprintf("Закупка_%s.zip", req.Procurement.Init.Title)
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	c.Response().Header().Set("Content-Type", "application/zip")
+
+	return c.Blob(http.StatusOK, "application/zip", buffer.Bytes())
+}
+
+// generateDocumentsZip - создает ZIP-архив со всеми 7 документами
+func (h *ProcurementHandler) generateDocumentsZip(req *service.GenerateFullPackageRequest) (*bytes.Buffer, error) {
+	buffer := &bytes.Buffer{}
+	zipWriter := zip.NewWriter(buffer)
+
+	// Список документов для генерации
+	documents := []struct {
+		filename  string
+		generator func() ([]byte, error)
+	}{
+		{"01_Заявка.docx", func() ([]byte, error) {
+			return service.GenerateApplicationDoc(req)
+		}},
+		{"02_Распоряжение.docx", func() ([]byte, error) {
+			return service.GenerateOrderDoc(req)
+		}},
+		{"03_Приложение_1_ТЗ.docx", func() ([]byte, error) {
+			return service.GenerateTechSpecDoc(req)
+		}},
+		{"04_Приложение_2_НМЦК.xlsx", func() ([]byte, error) {
+			return service.GenerateNMCCExcelBytes(&req.NMCCRequest)
+		}},
+		{"05_Информация_к_извещению.docx", func() ([]byte, error) {
+			return service.GenerateNoticeInfoDoc(req)
+		}},
+		{"06_Требования_к_заявке.docx", func() ([]byte, error) {
+			return service.GenerateBidRequirementsDoc(req)
+		}},
+		{"07_Проект_контракта.docx", func() ([]byte, error) {
+			return service.GenerateContractDraftDoc(req)
+		}},
+	}
+
+	// Генерация каждого документа
+	for _, doc := range documents {
+		content, err := doc.generator()
+		if err != nil {
+			// Если ошибка, добавляем текстовый файл с информацией об ошибке
+			content = []byte(fmt.Sprintf("Ошибка генерации документа: %v", err))
+			doc.filename = doc.filename + ".ERROR.txt"
+		}
+
+		fileWriter, err := zipWriter.Create(doc.filename)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create file in zip: %w", err)
+		}
+
+		_, err = fileWriter.Write(content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write file to zip: %w", err)
+		}
+	}
+
+	err := zipWriter.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close zip writer: %w", err)
+	}
+
+	return buffer, nil
 }

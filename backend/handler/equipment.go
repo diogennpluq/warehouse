@@ -10,10 +10,10 @@ import (
 )
 
 type EquipmentHandler struct {
-	service *service.EquipmentService
+	service service.EquipmentServicer
 }
 
-func NewEquipmentHandler(svc *service.EquipmentService) *EquipmentHandler {
+func NewEquipmentHandler(svc service.EquipmentServicer) *EquipmentHandler {
 	return &EquipmentHandler{service: svc}
 }
 

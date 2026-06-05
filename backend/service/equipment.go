@@ -6,6 +6,16 @@ import (
 	"github.com/techcontrol/backend/repository"
 )
 
+// EquipmentServicer - интерфейс для тестирования
+type EquipmentServicer interface {
+	GetAll(ctx context.Context) ([]repository.Equipment, error)
+	GetByID(ctx context.Context, id int64) (*repository.Equipment, error)
+	Create(ctx context.Context, equipment *repository.Equipment) error
+	Update(ctx context.Context, equipment *repository.Equipment) error
+	Delete(ctx context.Context, id int64) error
+	PredictReplacements(ctx context.Context) ([]repository.Equipment, error)
+}
+
 type EquipmentService struct {
 	repo *repository.EquipmentRepository
 }

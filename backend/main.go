@@ -36,7 +36,7 @@ func main() {
 	userService := service.NewUserService(db, cfg.JWT.Secret)
 	equipmentService := service.NewEquipmentService(db)
 	repairService := service.NewRepairService(db)
-	purchaseService := service.NewPurchaseService(db)
+	purchaseService := service.NewPurchaseService()
 	procurementService := service.NewProcurementService()
 
 	// Рутеры
@@ -78,6 +78,7 @@ func main() {
 	// Закупки по 44-ФЗ
 	api.POST("/procurement/calculate-nmcc", procurementHandler.CalculateNMCC)
 	api.POST("/procurement/generate-nmcc", procurementHandler.DownloadNMCC)
+	api.POST("/procurement/generate-full-package", procurementHandler.GenerateFullPackage)
 
 	// Health check
 	e.GET("/health", func(c echo.Context) error {

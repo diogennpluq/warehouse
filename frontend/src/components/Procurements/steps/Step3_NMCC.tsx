@@ -1,20 +1,5 @@
 import React, { useState, useMemo } from 'react';
-
-// --- Типы данных ---
-interface IProcurementItem {
-  id: string;
-  name: string;
-  quantity: number;
-  uom: string;
-}
-
-interface ICommercialOffer {
-  id: string;
-  providerName: string;
-  providerInn: string;
-  date: string;
-  pricesPerItem: Record<string, number>;
-}
+import { ICommercialOffer, IProcurementItem } from '../../../types/procurement';
 
 interface ItemCalculation {
   id: string;
