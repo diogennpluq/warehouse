@@ -62,24 +62,42 @@ techcontrol/
 - Docker Compose 2.0+
 - Go 1.21+ (для локальной разработки)
 - Node.js 18+ (для локальной разработки)
+- Make (опционально, для удобства)
 
 ### Запуск через Docker Compose
 
 ```bash
 # Запуск всех сервисов
-docker-compose up -d
+docker compose up -d
 
 # Просмотр логов
-docker-compose logs -f
+docker compose logs -f
 
 # Остановка
-docker-compose down
+docker compose down
 ```
 
 Приложения будут доступны по адресам:
-- Фронтенд: http://localhost:3000
-- Бэкенд API: http://localhost:8080
-- PostgreSQL: localhost:5432
+- **Фронтенд:** http://localhost:80
+- **Бэкенд API:** http://localhost:8080
+- **PostgreSQL:** localhost:5432
+- **Health check:** http://localhost:80/health
+
+### Использование Make (опционально)
+
+```bash
+# Показать все доступные команды
+make help
+
+# Запустить Docker Compose
+make docker-up
+
+# Запустить тесты
+make test
+
+# Собрать проект
+make build
+```
 
 ### Локальная разработка
 
@@ -180,10 +198,39 @@ REACT_APP_API_URL=http://localhost:8080/api
 
 Проект использует GitHub Actions для:
 - Автоматического тестирования при пуше/PR
-- Сборки Docker образов
+- Сборки и публикации Docker образов в GitHub Container Registry
 - Проверки качества кода
+- Деплоя на production
 
-Пайплайны определены в `.github/workflows/ci.yml`.
+### Пайплайны
+
+| Job | Описание |
+|-----|----------|
+| `backend-test` | Тесты Go + покрытие + сборка |
+| `frontend-test` | TypeScript проверка + тесты + сборка |
+| `docker-build` | Сборка и push Docker образов |
+| `deploy` | Деплой на production (требует настройки) |
+
+### Настройка деплоя
+
+1. Создайте секреты в GitHub Repository Settings → Secrets → Actions:
+   - `DEPLOY_HOST` — сервер для деплоя
+   - `DEPLOY_USER` — пользователь
+   - `DEPLOY_KEY` — SSH ключ
+
+2. Отредактируйте `.github/workflows/ci.yml` для вашей инфраструктуры
+
+### Локальное тестирование CI/CD
+
+```bash
+# Запустить все тесты и сборку
+make ci-local
+
+# Или по отдельности
+make test-backend
+make test-frontend
+make docker-build
+```
 
 ## Лицензия
 

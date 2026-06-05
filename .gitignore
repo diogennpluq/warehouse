@@ -47,8 +47,10 @@ frontend/build/
 frontend/dist/
 
 # Environment files
-backend/.env.local
+.env
+.env.local
 *.env.local
+!/.env.example
 
 # Docker volumes
 postgres_data/
@@ -60,3 +62,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# CI/CD
+.github/workflows/*.log
