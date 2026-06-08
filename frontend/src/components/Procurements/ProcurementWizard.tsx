@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { IProcurementWizardState, IProcurementInit, ITechSpec, IProcurementSettings } from '../../types/procurement';
+import { procurementAPI } from '../../api/api';
 import Step1_Init from './steps/Step1_Init';
 import Step2_TechSpec from './steps/Step2_TechSpec';
 import Step3_NMCC from './steps/Step3_NMCC';
@@ -66,27 +67,80 @@ export const ProcurementWizard: React.FC<ProcurementWizardProps> = ({
     }));
   }, []);
 
-  const handleStep3Complete = useCallback((data: { totalNMCC: number }) => {
+  const handleStep3Complete = useCallback((data: { offers: any[]; totalNMCC: number }) => {
     setTotalNMCC(data.totalNMCC);
     setState(prev => ({
       ...prev,
+      nmcc: {
+        commercialOffers: data.offers,
+      },
       currentStep: 4,
     }));
   }, []);
 
-  const handleStep4Complete = useCallback((data: IProcurementSettings) => {
+  const handleStep4Complete = useCallback(async (data: IProcurementSettings) => {
     const finalState = {
       ...state,
       settings: data,
       isSubmitting: true,
     };
 
-    if (onSubmit) {
-      onSubmit(finalState);
-    }
+    setState(finalState);
 
-    // Здесь будет вызов API для генерации документов
-    console.log('Final procurement data:', finalState);
+    try {
+      // Формируем запрос для генерации документов
+      const requestData = {
+        procurement: {
+          init: finalState.init,
+          tech_spec: {
+            items: finalState.techSpec.items,
+            warranty_months: finalState.techSpec.warrantyMonths,
+          },
+          nmcc: finalState.nmcc,
+          settings: finalState.settings,
+        },
+        nmcc_request: {
+          items: finalState.techSpec.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            uom: item.uom,
+            avg_price: 0, // Будет вычислено на бэкенде
+            total: 0,
+          })),
+          offers: finalState.nmcc.commercialOffers.map(offer => ({
+            provider_name: offer.providerName,
+            provider_inn: offer.providerInn,
+            date: offer.date,
+            prices_per_item: offer.pricesPerItem,
+          })),
+        },
+      };
+
+      // Вызываем API для генерации ZIP-архива
+      const response = await procurementAPI.generateFullPackage(requestData);
+
+      // Скачиваем файл
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Закупка_${finalState.init.title}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      if (onSubmit) {
+        onSubmit(finalState);
+      }
+
+      alert('Документы успешно сгенерированы и скачаны!');
+    } catch (error) {
+      console.error('Ошибка при генерации документов:', error);
+      alert('Ошибка при генерации документов. Проверьте консоль для деталей.');
+    } finally {
+      setState(prev => ({ ...prev, isSubmitting: false }));
+    }
   }, [state, onSubmit]);
 
   const handleBack = useCallback(() => {
@@ -141,13 +195,30 @@ export const ProcurementWizard: React.FC<ProcurementWizardProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
+      {/* Индикатор загрузки */}
+      {state.isSubmitting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mb-4"></div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Генерация документов...
+              </h3>
+              <p className="text-gray-600 text-center">
+                Пожалуйста, подождите. Создаются документы для закупки по 44-ФЗ.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Прогресс-бар */}
       <div className="max-w-6xl mx-auto px-4 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">
             Создание закупки по 44-ФЗ
           </h1>
-          
+
           <div className="flex items-center justify-between">
             {[1, 2, 3, 4].map((step) => (
               <React.Fragment key={step}>
@@ -172,7 +243,7 @@ export const ProcurementWizard: React.FC<ProcurementWizardProps> = ({
                     {step === 4 && 'Настройки'}
                   </span>
                 </div>
-                
+
                 {step < 4 && (
                   <div
                     className={`flex-1 h-1 mx-4 rounded ${

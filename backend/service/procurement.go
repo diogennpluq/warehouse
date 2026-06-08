@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -240,35 +241,119 @@ func ValidateNMCC(prices []float64) (bool, string) {
 	return true, "НМЦК рассчитана корректно"
 }
 
-// Заглушки для генерации Word-документов (будут реализованы с шаблонами)
+// Генерация Word-документов с использованием шаблонов
 
 // GenerateApplicationDoc - Заявка
 func GenerateApplicationDoc(req *GenerateFullPackageRequest) ([]byte, error) {
-	// TODO: Реализовать генерацию через go-docx с шаблоном
-	return []byte("Заявка (шаблон будет добавлен)"), nil
+	dg := NewDocumentGenerator()
+	data := dg.PrepareCommonData(req)
+
+	// Дополнительные данные для заявки
+	data["Justification"] = req.Procurement.Init.Justification
+
+	return dg.ReplaceWordPlaceholders("templates/application_template.docx", data)
 }
 
 // GenerateOrderDoc - Распоряжение
 func GenerateOrderDoc(req *GenerateFullPackageRequest) ([]byte, error) {
-	return []byte("Распоряжение (шаблон будет добавлен)"), nil
+	dg := NewDocumentGenerator()
+	data := dg.PrepareCommonData(req)
+
+	// Список членов комиссии
+	var commissionList strings.Builder
+	for i, memberID := range req.Procurement.Init.CommissionMembers {
+		if i > 0 {
+			commissionList.WriteString("\n")
+		}
+		commissionList.WriteString(fmt.Sprintf("%d. %s", i+1, memberID))
+	}
+	data["CommissionMembers"] = commissionList.String()
+	data["Justification"] = req.Procurement.Init.Justification
+	data["DeliveryTerms"] = req.Procurement.Init.DeliveryTerms
+	data["DeliveryAddress"] = req.Procurement.Init.DeliveryAddress
+
+	return dg.ReplaceWordPlaceholders("templates/order_template.docx", data)
 }
 
 // GenerateTechSpecDoc - Техническое задание (Приложение 1)
 func GenerateTechSpecDoc(req *GenerateFullPackageRequest) ([]byte, error) {
-	return []byte("Техническое задание (шаблон будет добавлен)"), nil
+	dg := NewDocumentGenerator()
+	data := dg.PrepareCommonData(req)
+
+	// Формируем таблицу объектов закупки
+	var itemsTable strings.Builder
+	for i, item := range req.Procurement.TechSpec.Items {
+		itemsTable.WriteString(fmt.Sprintf("%d. %s (Код КТРУ: %s, ОКПД2: %s), %d %s\n",
+			i+1, item.Name, item.KTRUCode, item.OKPD2Code, item.Quantity, item.UOM))
+
+		// Характеристики
+		if len(item.Characteristics) > 0 {
+			itemsTable.WriteString("   Характеристики:\n")
+			for _, char := range item.Characteristics {
+				mandatory := ""
+				if char.IsMandatory {
+					mandatory = " (обязательная)"
+				}
+				itemsTable.WriteString(fmt.Sprintf("   - %s: %s%s\n", char.Name, char.Value, mandatory))
+			}
+		}
+		itemsTable.WriteString("\n")
+	}
+	data["ItemsTable"] = itemsTable.String()
+	data["WarrantyMonthsValue"] = fmt.Sprintf("%d", req.Procurement.TechSpec.WarrantyMonths)
+
+	return dg.ReplaceWordPlaceholders("templates/application_template.docx", data)
 }
 
 // GenerateNoticeInfoDoc - Информация к извещению
 func GenerateNoticeInfoDoc(req *GenerateFullPackageRequest) ([]byte, error) {
-	return []byte("Информация к извещению (шаблон будет добавлен)"), nil
+	dg := NewDocumentGenerator()
+	data := dg.PrepareCommonData(req)
+
+	return dg.ReplaceWordPlaceholders("templates/notice_info_template.docx", data)
 }
 
 // GenerateBidRequirementsDoc - Требования к составу заявки
 func GenerateBidRequirementsDoc(req *GenerateFullPackageRequest) ([]byte, error) {
-	return []byte("Требования к заявке (шаблон будет добавлен)"), nil
+	dg := NewDocumentGenerator()
+	data := dg.PrepareCommonData(req)
+
+	return dg.ReplaceWordPlaceholders("templates/bid_requirements_template.docx", data)
 }
 
 // GenerateContractDraftDoc - Проект контракта
 func GenerateContractDraftDoc(req *GenerateFullPackageRequest) ([]byte, error) {
-	return []byte("Проект контракта (шаблон будет добавлен)"), nil
+	dg := NewDocumentGenerator()
+	data := dg.PrepareCommonData(req)
+
+	// Формируем спецификацию
+	var specification string
+	for i, item := range req.Procurement.TechSpec.Items {
+		// Находим среднюю цену из НМЦК
+		avgPrice := 0.0
+		total := 0.0
+		for _, nmccItem := range req.NMCCRequest.Items {
+			if nmccItem.ID == item.ID {
+				avgPrice = nmccItem.AvgPrice
+				total = nmccItem.Total
+				break
+			}
+		}
+
+		specification += fmt.Sprintf("%d. %s - %d %s × %.2f руб. = %.2f руб.\n",
+			i+1, item.Name, item.Quantity, item.UOM, avgPrice, total)
+	}
+	data["Specification"] = specification
+
+	return dg.ReplaceWordPlaceholders("templates/contract_draft_template.docx", data)
+}
+
+// escapeXML - экранирование специальных XML-символов для UTF-8
+func escapeXML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	s = strings.ReplaceAll(s, "'", "&apos;")
+	return s
 }

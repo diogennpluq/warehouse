@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/qax-os/excelize/v2"
+	"github.com/xuri/excelize/v2"
 )
 
 func main() {
@@ -97,15 +97,19 @@ func main() {
 	totalRow := 9
 	f.MergeCell(sheet, fmt.Sprintf("A%d", totalRow), fmt.Sprintf("H%d", totalRow))
 	f.SetCellValue(sheet, fmt.Sprintf("A%d", totalRow), "ИТОГО начальная (максимальная) цена контракта:")
-	f.SetCellStyle(sheet, fmt.Sprintf("A%d", totalRow), fmt.Sprintf("A%d", totalRow), &excelize.Style{Font: &excelize.Font{Bold: true, Size: 11}})
-	
+
+	boldStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11}})
+	f.SetCellStyle(sheet, fmt.Sprintf("A%d", totalRow), fmt.Sprintf("A%d", totalRow), boldStyle)
+
 	f.SetCellValue(sheet, fmt.Sprintf("I%d", totalRow), fmt.Sprintf("=SUM(I%d:I%d)", row, row))
 	f.SetCellStyle(sheet, fmt.Sprintf("I%d", totalRow), fmt.Sprintf("I%d", totalRow), centerStyle)
 
 	// === ИНФОРМАЦИЯ О ПОСТАВЩИКАХ ===
 	infoRow := 12
 	f.SetCellValue(sheet, fmt.Sprintf("A%d", infoRow), "Информация о поставщиках:")
-	f.SetCellStyle(sheet, fmt.Sprintf("A%d", infoRow), fmt.Sprintf("A%d", infoRow), &excelize.Style{Font: &excelize.Font{Bold: true, Size: 10}})
+
+	infoHeaderStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10}})
+	f.SetCellStyle(sheet, fmt.Sprintf("A%d", infoRow), fmt.Sprintf("A%d", infoRow), infoHeaderStyle)
 
 	// Поставщик 1
 	f.SetCellValue(sheet, fmt.Sprintf("A%d", infoRow+1), "1. Наименование:")
@@ -134,7 +138,9 @@ func main() {
 	// === КОЭФФИЦИЕНТ ВАРИАЦИИ ===
 	cvRow := 18
 	f.SetCellValue(sheet, fmt.Sprintf("A%d", cvRow), "Расчет коэффициента вариации:")
-	f.SetCellStyle(sheet, fmt.Sprintf("A%d", cvRow), fmt.Sprintf("A%d", cvRow), &excelize.Style{Font: &excelize.Font{Bold: true, Size: 10}})
+
+	cvHeaderStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10}})
+	f.SetCellStyle(sheet, fmt.Sprintf("A%d", cvRow), fmt.Sprintf("A%d", cvRow), cvHeaderStyle)
 	
 	f.SetCellValue(sheet, fmt.Sprintf("A%d", cvRow+1), "Среднее квадратическое отклонение (σ):")
 	f.SetCellValue(sheet, fmt.Sprintf("B%d", cvRow+1), fmt.Sprintf("=STDEV.S(D%d:F%d)", row, row))
@@ -158,7 +164,13 @@ func main() {
 		f.SetColWidth(sheet, col, col, width)
 	}
 
-	f.SetPageLayout(sheet, excelize.PageLayoutOrientation("landscape"), excelize.PageLayoutPaperSize(9))
+	// Настройка страницы
+	orientation := "landscape"
+	size := 9
+	f.SetPageLayout(sheet, &excelize.PageLayoutOptions{
+		Orientation: &orientation,
+		Size:        &size,
+	})
 
 	// Сохраняем
 	if err := f.SaveAs("nmcc_template.xlsx"); err != nil {

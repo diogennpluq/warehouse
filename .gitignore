@@ -9,6 +9,7 @@ obj
 *.test
 *.out
 
+.claude/
 # Go dependency directories
 pkg/
 

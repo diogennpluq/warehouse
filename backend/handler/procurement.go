@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
+	"unicode"
 
 	"github.com/labstack/echo/v4"
 	"github.com/techcontrol/backend/service"
@@ -44,8 +46,9 @@ func (h *ProcurementHandler) DownloadNMCC(c echo.Context) error {
 		})
 	}
 
-	// Заголовки для скачивания файла
-	c.Response().Header().Set("Content-Disposition", `attachment; filename="Обоснование_НМЦК.xlsx"`)
+	// Заголовки для скачивания файла с UTF-8
+	filename := "Obosnovanie_NMCK.xlsx"
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, filename))
 	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 	return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer.Bytes())
@@ -92,8 +95,8 @@ func (h *ProcurementHandler) GenerateFullPackage(c echo.Context) error {
 	}
 
 	// Заголовки для скачивания файла
-	filename := fmt.Sprintf("Закупка_%s.zip", req.Procurement.Init.Title)
-	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	filename := transliterate(req.Procurement.Init.Title) + ".zip"
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, filename))
 	c.Response().Header().Set("Content-Type", "application/zip")
 
 	return c.Blob(http.StatusOK, "application/zip", buffer.Bytes())
@@ -109,53 +112,131 @@ func (h *ProcurementHandler) generateDocumentsZip(req *service.GenerateFullPacka
 		filename  string
 		generator func() ([]byte, error)
 	}{
-		{"01_Заявка.docx", func() ([]byte, error) {
+		{"01_Zayavka.docx", func() ([]byte, error) {
 			return service.GenerateApplicationDoc(req)
 		}},
-		{"02_Распоряжение.docx", func() ([]byte, error) {
+		{"02_Rasporyazhenie.docx", func() ([]byte, error) {
 			return service.GenerateOrderDoc(req)
 		}},
-		{"03_Приложение_1_ТЗ.docx", func() ([]byte, error) {
+		{"03_Prilozhenie_1_TZ.docx", func() ([]byte, error) {
 			return service.GenerateTechSpecDoc(req)
 		}},
-		{"04_Приложение_2_НМЦК.xlsx", func() ([]byte, error) {
+		{"04_Prilozhenie_2_NMCK.xlsx", func() ([]byte, error) {
 			return service.GenerateNMCCExcelBytes(&req.NMCCRequest)
 		}},
-		{"05_Информация_к_извещению.docx", func() ([]byte, error) {
+		{"05_Informaciya_k_izveshcheniyu.docx", func() ([]byte, error) {
 			return service.GenerateNoticeInfoDoc(req)
 		}},
-		{"06_Требования_к_заявке.docx", func() ([]byte, error) {
+		{"06_Trebovaniya_k_zayavke.docx", func() ([]byte, error) {
 			return service.GenerateBidRequirementsDoc(req)
 		}},
-		{"07_Проект_контракта.docx", func() ([]byte, error) {
+		{"07_Proekt_kontrakta.docx", func() ([]byte, error) {
 			return service.GenerateContractDraftDoc(req)
 		}},
 	}
 
 	// Генерация каждого документа
 	for _, doc := range documents {
-		content, err := doc.generator()
-		if err != nil {
+		content, genErr := doc.generator()
+		if genErr != nil {
 			// Если ошибка, добавляем текстовый файл с информацией об ошибке
-			content = []byte(fmt.Sprintf("Ошибка генерации документа: %v", err))
+			content = []byte(fmt.Sprintf("Ошибка генерации документа: %v", genErr))
 			doc.filename = doc.filename + ".ERROR.txt"
 		}
 
-		fileWriter, err := zipWriter.Create(doc.filename)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create file in zip: %w", err)
+		fileWriter, fwErr := zipWriter.Create(doc.filename)
+		if fwErr != nil {
+			return nil, fmt.Errorf("failed to create file in zip: %w", fwErr)
 		}
 
-		_, err = fileWriter.Write(content)
-		if err != nil {
-			return nil, fmt.Errorf("failed to write file to zip: %w", err)
+		_, writeErr := fileWriter.Write(content)
+		if writeErr != nil {
+			return nil, fmt.Errorf("failed to write file to zip: %w", writeErr)
 		}
 	}
 
-	err := zipWriter.Close()
-	if err != nil {
-		return nil, fmt.Errorf("failed to close zip writer: %w", err)
+	closeErr := zipWriter.Close()
+	if closeErr != nil {
+		return nil, fmt.Errorf("failed to close zip writer: %w", closeErr)
 	}
 
 	return buffer, nil
+}
+
+// transliterate - транслитерация русского текста в латиницу для имен файлов
+func transliterate(text string) string {
+	result := strings.Builder{}
+	for _, r := range text {
+		switch unicode.ToLower(r) {
+		case 'а':
+			result.WriteRune('a')
+		case 'б':
+			result.WriteRune('b')
+		case 'в':
+			result.WriteRune('v')
+		case 'г':
+			result.WriteRune('g')
+		case 'д':
+			result.WriteRune('d')
+		case 'е', 'ё':
+			result.WriteRune('e')
+		case 'ж':
+			result.WriteString("zh")
+		case 'з':
+			result.WriteRune('z')
+		case 'и':
+			result.WriteRune('i')
+		case 'й':
+			result.WriteRune('y')
+		case 'к':
+			result.WriteRune('k')
+		case 'л':
+			result.WriteRune('l')
+		case 'м':
+			result.WriteRune('m')
+		case 'н':
+			result.WriteRune('n')
+		case 'о':
+			result.WriteRune('o')
+		case 'п':
+			result.WriteRune('p')
+		case 'р':
+			result.WriteRune('r')
+		case 'с':
+			result.WriteRune('s')
+		case 'т':
+			result.WriteRune('t')
+		case 'у':
+			result.WriteRune('u')
+		case 'ф':
+			result.WriteRune('f')
+		case 'х':
+			result.WriteRune('h')
+		case 'ц':
+			result.WriteRune('c')
+		case 'ч':
+			result.WriteString("ch")
+		case 'ш':
+			result.WriteString("sh")
+		case 'щ':
+			result.WriteString("sch")
+		case 'ъ', 'ь':
+			result.WriteRune('\'')
+		case 'ы':
+			result.WriteRune('i')
+		case 'э':
+			result.WriteRune('e')
+		case 'ю':
+			result.WriteString("yu")
+		case 'я':
+			result.WriteString("ya")
+		default:
+			if unicode.IsLetter(r) || unicode.IsDigit(r) {
+				result.WriteRune(r)
+			} else {
+				result.WriteRune('_')
+			}
+		}
+	}
+	return result.String()
 }

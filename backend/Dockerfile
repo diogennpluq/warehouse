@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -23,6 +23,9 @@ RUN apk add --no-cache ca-certificates tzdata curl
 
 # Копируем бинарник из builder
 COPY --from=builder /app/main .
+
+# Копируем шаблоны документов
+COPY templates/ ./templates/
 
 EXPOSE 8080
 

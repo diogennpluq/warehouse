@@ -42,7 +42,7 @@ lint-backend: ## Запустить линтер бэкенда
 	cd backend && go fmt ./... && go vet ./...
 
 lint-frontend: ## Запустить линтер фронтенда
-	cd frontend && npm run build -- --noEmit
+	cd frontend && npx tsc --noEmit --skipLibCheck
 
 ## ====================
 ## Сборка
@@ -55,6 +55,12 @@ build-backend: ## Собрать бэкенд
 
 build-frontend: ## Собрать фронтенд
 	cd frontend && npm run build
+
+docker-build-frontend: ## Собрать Docker образ фронтенда
+	cd frontend && docker build -t techcontrol-frontend:latest .
+
+docker-build-backend: ## Собрать Docker образ бэкенда
+	cd backend && docker build -t techcontrol-backend:latest .
 
 clean: ## Очистить артефакты сборки
 	rm -rf backend/main frontend/build
